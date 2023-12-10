@@ -1,18 +1,8 @@
-
-#include <iostream>
-#include <stdio.h>
-#include <stdlib.h>
-#include <vector>
-#include <string>
-#include <stack>
-#include <map>
-#include <iomanip>
-#include <cstring>
-#include <cstdlib>
-#include <bits/ios_base.h>
+#include <bits/stdc++.h>
 using namespace std;
-map<char, int> getnum;
-vector<char> getzf;
+
+map<char, int> getnum; // 映射,用来存储每个非终结符和终结符的编号
+vector<char> getzf;    // 用来存储产生式中出现的所有的非终结符和终结符
 vector<string> proce(10);
 vector<string> first(20);
 vector<string> follow(20);
@@ -28,31 +18,24 @@ void read()
     int i = 0;
     int n = 0;
     cout << "******************************LL(1)语法分析****************************" << endl;
-    cout << "注意：E'用H代替，T‘用J代替，空串用@代替 " << endl;
-    cout << "请输入产生式的集合（空用'@'表示）,输入一条产生式后换行，最后以'end'结束:" << endl;
+    cout << "注意：E'用H代替，T'用J代替，空串用@代替 " << endl;
+    cout << "请输入产生式的集合（空串用'@'表示）,输入一条产生式后换行，最后以'end'结束:" << endl;
     string ss;
-    string dd;
-    int j = 0;
+    int j = 0; // 记录（展开后）有几条产生式
     int y = 0;
-    while (cin >> ss && ss != "end")
+    while (cin >> ss && ss != "end") // 读入产生式
     {
-        dd.clear();
-        dd += ss[0];
-        proce[j] += dd;
+        proce[j] += ss[0];
         for (i = 3; i < ss.length(); i++)
         {
             if (ss[i] != '|')
             {
-                dd.clear();
-                dd += ss[i];
-                proce[j] += dd;
+                proce[j] += ss[i];
             }
             else
             {
-                dd.clear();
-                dd += ss[0];
-                dd += ss[++i];
-                proce[++j] += dd;
+                proce[++j] += ss[0];
+                proce[j] += ss[++i];
             }
         }
         j++;
@@ -61,21 +44,21 @@ void read()
     //	getzf[0]='#';没有定义数组大小的时候这样输入是错误的
     getzf.push_back('#');
     // 终结符压栈
-    for (int i = 0; i < proce.size(); i++)
+    for (int i = 0; i < proce.size(); i++) // 遍历每一条产生式
     {
-        for (int k = 0; k < proce[i].length(); k++)
+        for (int k = 0; k < proce[i].length(); k++) // 遍历每条产生式里的每个字符
         {
-            if (proce[i][k] != '-' && proce[i][k] != '|')
+            if (proce[i][k] != '|')
             {
-                if (proce[i][k] < 64 || proce[i][k] > 90)
+                if (proce[i][k] < 64 || proce[i][k] > 90) // 处理非终结符（比较的是ascii码）
                 {
-                    for (y = 0; y < getzf.size(); y++)
+                    for (y = 0; y < getzf.size(); y++) // 检查proce[i][k]是否已经在getzf中
                     {
                         if (proce[i][k] == getzf[y])
                             break;
                     }
-                    if (y == getzf.size() && k != 2)
-                    { // 这里让k!=2是不让第三位置的>进去
+                    if (y == getzf.size()) // 如果proce[i][k]未在getzf中
+                    {
                         getnum[proce[i][k]] = ++n;
                         getzf.push_back(proce[i][k]);
                     }
@@ -83,19 +66,19 @@ void read()
             }
         }
     }
-    getnum['@'] = ++n;
-    numv = n; // 终结符的数量等于当前n的值
+    getnum['@'] = ++n; // 映射‘空’
+    numv = n;          // 终结符的数量等于当前n的值
     getzf.push_back('@');
     // 非终结符压栈
     for (int i = 0; i < proce.size(); i++)
     {
         for (int k = 0; k < proce[i].length(); k++)
         {
-            if (proce[i][k] != '-' && proce[i][k] != '|' && proce[i][k] != '>')
+            if (proce[i][k] != '|')
             {
                 if (proce[i][k] > 64 && proce[i][k] < 91)
                 {
-                    for (y = 0; y < getzf.size(); y++)
+                    for (y = 0; y < getzf.size(); y++) // 检查proce[i][k]是否已经在getzf中
                     {
                         if (proce[i][k] == getzf[y])
                             break;
@@ -103,19 +86,20 @@ void read()
                     if (y == getzf.size())
                     {
                         getnum[proce[i][k]] = ++n;
-                        num = n; // 终结符加非终结符的数量等于当前i的值
+                        // num = n;
                         getzf.push_back(proce[i][k]);
                     }
                 }
             }
         }
     }
+    num = n; // 非终结符+终结符的总个数
 }
 
 // 给终结符的first数组赋值
 void get_firstT()
 {
-    int i; // 不能在下面int
+    int i;
     // 先给终结符的first数组赋值
     for (i = 1; i <= numv; i++)
     {
@@ -187,13 +171,12 @@ void get_follow(int *a)
                 }
             }
         }
-
         if (flag == 1)
             break; // 停止寻找
     }
 }
 
-// 求预测分析表
+// 求LL(1)分析表
 void get_table()
 {
     memset(table, -1, sizeof(table));      // 刚开始tableM没有初始化，导致本该是空格的地方出现E->TA
@@ -247,7 +230,7 @@ void print_table()
     cout << "________________________________________________________" << endl;
     for (int i = 0; i < numv; i++)
         cout << '\t' << getzf[i];
-    cout << endl;
+    // cout << endl;
     for (int i = numv + 1; i <= num; i++)
     {
         cout << endl
@@ -391,6 +374,6 @@ T->FJ
 J->*FJ
 J->@
 F->(E)
-F->a
+F->i
 end
 */
