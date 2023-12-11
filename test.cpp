@@ -93,11 +93,10 @@ char char_after_dot(char a[100]) // 返回.之后的第一个字符
         }
 }
 
-char *move_dot(char b[100], int len) //.向后移一位，返回修改后的字符串a
+string move_dot(const string &b) //.向后移一位，返回修改后的字符串a
 {
-    char a[100] = {};
-    strcpy(a, b);
-    for (int i = 0; i < len; i++)
+    string a = b;
+    for (int i = 0; i < b.length(); i++)
     {
         if (a[i] == '.')
         {
@@ -105,7 +104,7 @@ char *move_dot(char b[100], int len) //.向后移一位，返回修改后的字�
             break;
         }
     }
-    return &a[0];
+    return a;
 }
 
 bool same_state(struct state *I0, struct state *I) // 判断两个state是否相同
@@ -160,7 +159,8 @@ void goto_state(struct state *I, struct state *S, char a) // 状态转移
             {
                 time++;
             }
-            strcpy(S->prod[S->prod_count], move_dot(I->prod[i], strlen(I->prod[i])));
+            // S->prod[S->prod_count]=move_dot(I->prod[i]);
+            strcpy(S->prod[S->prod_count], move_dot(I->prod[i]).c_str());
             S->prod_count++;
         }
     }
