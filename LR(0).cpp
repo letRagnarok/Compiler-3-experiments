@@ -1,8 +1,4 @@
-#include <iostream>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-
+#include <bits/stdc++.h>
 using namespace std;
 
 char terminals[100] = {};     // 终结符
@@ -10,10 +6,8 @@ int no_t;                     // the number of terminals
 char non_terminals[100] = {}; // 非终结符
 int no_nt;                    // the number of non terminals
 char goto_table[100][100];
-char reduce[20][20];
-char follow[20][20];
-char fo_co[20][20];
-char first[20][20];
+string action[100][100] = {};
+char GOTO[100][100] = {};
 
 struct state
 {
@@ -51,12 +45,20 @@ void get_prods(struct state *I)
     cin >> no_nt;
     cout << "Enter the non terminals one by one:" << endl;
     for (int i = 0; i < no_nt; i++)
+    {
         cin >> non_terminals[i];
+        GOTO[0][i + 1] = non_terminals[i];
+    }
     cout << "Enter the number of terminals:" << endl;
     cin >> no_t;
     cout << "Enter the terminals (single lettered) one by one:" << endl;
     for (int i = 0; i < no_t; i++)
+    {
         cin >> terminals[i];
+        action[0][i + 1] = terminals[i];
+    }
+    action[0][no_t + 1] = "#"; // 增加结束符号
+
     cout << "Enter the productions one by one in form (S->ABc):\n";
     for (int i = 0; i < I->prod_count; i++)
     {
@@ -150,16 +152,10 @@ void closure(struct state *I, struct state *I0) // init,I[0]
 
 void goto_state(struct state *I, struct state *S, char a) // 状态转移
 {
-    int time = 1;
     for (int i = 0; i < I->prod_count; i++)
     {
         if (char_after_dot(I->prod[i]) == a)
         {
-            if (time == 1)
-            {
-                time++;
-            }
-            // S->prod[S->prod_count]=move_dot(I->prod[i]);
             strcpy(S->prod[S->prod_count], move_dot(I->prod[i]).c_str());
             S->prod_count++;
         }
@@ -187,6 +183,44 @@ void cleanup_prods(struct state *I) // 清除给定状态中的所有产生式
     for (int i = 0; i < I->prod_count; i++)
         strcpy(I->prod[i], a);
     I->prod_count = 0;
+}
+
+void action_or_GOTO(int i, int k, char c)
+{
+    if (c >= 'A' && c <= 'Z') // 说明是非终结符，完善GOTO
+    {
+        for (int m = 1; m <= no_nt; m++)
+            if (GOTO[0][m] == c)
+                GOTO[i + 1][m] = k; // 说明第i+1个状态（状态i）会通过字符m转移到状态k
+    }
+    else // 说明是终结符，完善action
+    {
+        for (int m = 1; m <= no_t; m++)
+        {
+            if (action[0][m][0] == c)
+            {
+                action[i + 1][m] = "S" + to_string(k);
+            }
+        }
+    }
+}
+
+void print_table(int state_count)
+{
+
+    for (int i = 1; i <= state_count; i++)
+    {
+        action[i][0] = to_string(i - 1);
+    }
+    cout << "************ACTION************" << endl;
+    for (int i = 0; i <= state_count; i++)
+    {
+        for (int j = 0; j <= no_t + 1; j++)
+        {
+            cout << setw(5) << action[i][j] << "   ";
+        }
+        cout << endl;
+    }
 }
 
 int main()
@@ -232,6 +266,7 @@ int main()
                     flag = 1;
                     cout << "I" << i << " on reading the symbol " << characters[j] << " goes to I" << k << ".\n";
                     goto_table[i][k] = characters[j]; // I[i]通过characters[j]这个字符会转移到I[k]
+                    action_or_GOTO(i, k, characters[j]);
                     break;
                 }
             }
@@ -240,23 +275,24 @@ int main()
                 state_count++;
                 cout << "I" << i << " on reading the symbol " << characters[j] << " goes to I" << state_count - 1 << ":\n";
                 goto_table[i][state_count - 1] = characters[j];
+                action_or_GOTO(i, state_count - 1, characters[j]);
                 print_prods(&I[state_count - 1]);
             }
         }
     }
+    print_table(state_count);
     system("pause");
     return 0;
 }
+
 /*
-6
-3
-S A B
 4
-a b c d
-S->aA
-S->bB
-A->cA
-A->d
-B->cB
-B->d
+3
+S I T
+5
+v : , i r
+S->vI:T
+I->I,i
+I->i
+T->r
 */
