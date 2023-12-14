@@ -5,9 +5,8 @@ char terminals[100] = {};     // 终结符
 int no_t;                     // the number of terminals
 char non_terminals[100] = {}; // 非终结符
 int no_nt;                    // the number of non terminals
-char goto_table[100][100];
 string action[100][100] = {};
-char GOTO[100][100] = {};
+int GOTO[100][100] = {};
 
 struct state
 {
@@ -57,7 +56,8 @@ void get_prods(struct state *I)
         cin >> terminals[i];
         action[0][i + 1] = terminals[i];
     }
-    action[0][no_t + 1] = "#"; // 增加结束符号
+    terminals[no_t++] = '#'; // 增加结束符号
+    action[0][no_t] = "#";
 
     cout << "Enter the productions one by one in form (S->ABc):\n";
     for (int i = 0; i < I->prod_count; i++)
@@ -189,8 +189,8 @@ void action_or_GOTO(int i, int k, char c)
 {
     if (c >= 'A' && c <= 'Z') // 说明是非终结符，完善GOTO
     {
-        for (int m = 1; m <= no_nt; m++)
-            if (GOTO[0][m] == c)
+        for (int m = 0; m < no_nt; m++)
+            if (non_terminals[m] == c)
                 GOTO[i + 1][m] = k; // 说明第i+1个状态（状态i）会通过字符m转移到状态k
     }
     else // 说明是终结符，完善action
@@ -212,14 +212,92 @@ void print_table(int state_count)
     {
         action[i][0] = to_string(i - 1);
     }
-    cout << "************ACTION************" << endl;
+    cout << endl
+         << "------------------ACTION------------------" << endl;
     for (int i = 0; i <= state_count; i++)
     {
-        for (int j = 0; j <= no_t + 1; j++)
+        for (int j = 0; j <= no_t; j++)
         {
-            cout << setw(5) << action[i][j] << "   ";
+            cout << setw(5) << action[i][j];
         }
         cout << endl;
+    }
+    cout << endl
+         << "------------------GOTO------------------" << endl;
+    cout << setw(5) << " ";
+    for (int i = 0; i < no_nt; i++)
+        cout << setw(5) << non_terminals[i];
+    cout << endl;
+    for (int i = 1; i <= state_count; i++)
+    {
+        cout << setw(5) << i - 1;
+        for (int j = 0; j < no_nt; j++)
+        {
+            if (GOTO[i][j] != 0)
+                cout << setw(5) << GOTO[i][j];
+            else
+                cout << setw(5) << " ";
+        }
+        cout << endl;
+    }
+}
+
+void analysis(struct state *temp)
+{
+    string str;
+    string sta = "#0";
+    string act;
+    cout << "Enter a string to analysis:\n";
+    cin >> str;
+    str += "#"; // 加上结束符号
+    cout << endl
+         << setw(5) << "步骤" << setw(12) << "符号栈" << setw(10) << "输入串" << setw(30) << "动作" << endl;
+    for (int i = 1;; i++)
+    {
+        if (str == "")
+            break;
+        cout << setw(5) << i << setw(12) << sta << setw(10) << str;
+        for (int j = 0; j < no_t; j++)
+        {
+            if (str[0] == terminals[j])
+            {
+                act = action[(sta.back() - '0') + 1][j + 1];
+                if (act[0] == 'S') // 移进
+                {
+                    act += "移进";
+                    sta = sta + str[0] + act[1];
+                    str = str.substr(1);
+                    break;
+                }
+                else if (act[0] == 'r') // 归约
+                {
+                    int p = act[1] - '0';
+                    string s = temp->prod[p], Goto;
+                    // action归约
+                    act = act + "用" + s + "归约;GOTO(";
+                    for (int m = 0; m < s.length() - 3; m++)
+                    {
+                        sta = sta.substr(0, sta.size() - 2);
+                    }
+                    act = act + sta.back() + "," + s[0] + ")=";
+                    // GOTO
+                    for (int j = 0; j < no_nt; j++)
+                    {
+                        if (s[0] == non_terminals[j])
+                        {
+                            Goto = to_string(GOTO[sta.back() - '0' + 1][j]);
+                            act = act + Goto;
+                            sta = sta + s[0] + Goto;
+                            break;
+                        }
+                    }
+                    break;
+                }
+                str = "";
+                break;
+            }
+        }
+        cout << setw(30) << act << endl;
     }
 }
 
@@ -227,17 +305,16 @@ int main()
 {
     struct state init;
     struct state temp;   // backup
-    struct state temp1;  // backup
     int state_count = 1; // 状态的个数
     get_prods(&init);
-    temp = init;
-    temp1 = temp;
-    add_dots(&init);
+    // temp = init;
 
-    // 初始化状态表
-    for (int i = 0; i < 100; i++)
-        for (int j = 0; j < 100; j++)
-            goto_table[i][j] = '~';
+    strcpy(temp.prod[0], "Z->S");
+    temp.prod_count = 1;
+    for (int i = 0; i < init.prod_count; i++)
+        strcpy(temp.prod[temp.prod_count++], init.prod[i]);
+
+    add_dots(&init);
 
     struct state I[50];
     augument(&I[0], &init);
@@ -265,22 +342,48 @@ int main()
                     cleanup_prods(&I[state_count]);
                     flag = 1;
                     cout << "I" << i << " on reading the symbol " << characters[j] << " goes to I" << k << ".\n";
-                    goto_table[i][k] = characters[j]; // I[i]通过characters[j]这个字符会转移到I[k]
                     action_or_GOTO(i, k, characters[j]);
                     break;
                 }
             }
             if (flag == 0)
             {
+                // 处理转移状态
+
+                cout << "I" << i << " on reading the symbol " << characters[j] << " goes to I" << state_count << ":\n";
+                action_or_GOTO(i, state_count, characters[j]);
+                print_prods(&I[state_count]);
+
+                // 处理新状态
+                if (I[state_count].prod_count == 1 && !char_after_dot(I[state_count].prod[0])) // 说明这个产生式已经处理完毕，可以归约
+                {
+                    string produce = I[state_count].prod[0];
+                    if (produce == "Z->S.")
+                        action[state_count + 1][no_t] = "acc";
+                    else
+                    {
+                        produce = produce.substr(0, produce.length() - 1);
+                        for (int m = 0; m < temp.prod_count; m++)
+                            if (produce == temp.prod[m])
+                            {
+                                for (int n = 1; n <= no_t + 1; n++)
+                                    action[state_count + 1][n] = "r" + to_string(m);
+                                break;
+                            }
+                    }
+                }
                 state_count++;
-                cout << "I" << i << " on reading the symbol " << characters[j] << " goes to I" << state_count - 1 << ":\n";
-                goto_table[i][state_count - 1] = characters[j];
-                action_or_GOTO(i, state_count - 1, characters[j]);
-                print_prods(&I[state_count - 1]);
             }
         }
     }
-    print_table(state_count);
+
+    // 打印增广后的产生式
+    for (int i = 0; i < temp.prod_count; i++)
+    {
+        cout << "(" << i << ") " << temp.prod[i] << endl;
+    }
+    print_table(state_count); // 打印LR(0)的action和goto
+    analysis(&temp);          // 对一个串进行LR分析
     system("pause");
     return 0;
 }
@@ -295,4 +398,6 @@ S->vI:T
 I->I,i
 I->i
 T->r
+
+vi,i:r
 */
