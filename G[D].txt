@@ -1,0 +1,4 @@
+D->var I
+I->i,I
+I->i:real
+I->i: integer
